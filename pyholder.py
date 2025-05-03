@@ -3,7 +3,7 @@ import os, sys, inspect;
 def get_this_filename() -> str : return inspect.getfile(lambda: None).replace('\\', "/");
 sys.path.insert(0, "/".join(os.path.dirname(get_this_filename()).split('/')[:-1]));  # Add the parent directory to sys.path
 
-from phyton import pathForDataSource, pathForCodeSource, filenameForDataPyTime, filenameForCodeFromPyTime, fileList, pathForFileTarget, validateFile, pathPartsTrimmed;
+from phyton import pathForDataSource, pathForCodeSource, filenameForDataPyTime, filenameForCodePyTime, fileList, pathForFileTarget, etsPathValidate, pathPartsTrimmed;
 from yce_ping import read_packet_hex;
 
 import json, time, io;
@@ -54,13 +54,13 @@ def get_firmware_update_bytes(mac_address: str, settings_string: str):
     if os.path.exists(firmware_folder):
         firmware_files  : list  = list_files(firmware_folder, ".bin", False);
         settings_dict   : dict  = json.loads(settings_string);
-        rollback_from   : str   = settings_dict["rollback_from"] if ("rollback_from" in settings_dict) else filenameForCodeFromPyTime(0);
+        rollback_from   : str   = settings_dict["rollback_from"] if ("rollback_from" in settings_dict) else filenameForCodePyTime(0);
         if(rollback_from in firmware_files):
             firmware_files.remove(rollback_from);
         if(len(firmware_files)):
             last_firmware   : str   = firmware_files[-1];
             has_build_info  : bool  = "TNO_VERSION_FILENAME" in settings_dict;
-            soc_firmware    : str   = settings_dict["TNO_VERSION_FILENAME"] if (has_build_info and -1 == settings_dict["TNO_SETTINGS_SOURCE"].find(".mini.")) else filenameForCodeFromPyTime(0);
+            soc_firmware    : str   = settings_dict["TNO_VERSION_FILENAME"] if (has_build_info and -1 == settings_dict["TNO_SETTINGS_SOURCE"].find(".mini.")) else filenameForCodePyTime(0);
             last_is_newer   : bool  = soc_firmware != sorted([last_firmware, soc_firmware])[1];
             if last_is_newer:
                 with open('/'.join([firmware_folder, last_firmware]), "rb") as firmware_file:

@@ -133,5 +133,3 @@ def read_packet_hex(hexencoded: str) -> tuple[PacketHeader, List[PacketIMU | Pac
                 print(packet_section)
 
     return packet_header, packet_sections, packet_bytes
-
-
