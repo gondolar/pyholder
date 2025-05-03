@@ -11,18 +11,18 @@ from typing import Any;
 from fastapi import FastAPI, BackgroundTasks, Request;
 from fastapi.responses import JSONResponse, StreamingResponse;
 
-def respond_json(http_code: int, dict_response: dict ) -> int                 : print(f"Responding {http_code}:", dict_response); return JSONResponse(content=dict_response, status_code=http_code)  
-def respond_file(http_code: int, byte_response: bytes) -> StreamingResponse   : print(f"Responding {http_code}:", byte_response); return StreamingResponse(io.BytesIO(byte_response), media_type="application/octet-stream", status_code=http_code)
+def respond_json(http_code: int, dict_response: dict ) -> int                 : print(f"Response: {http_code} ->", dict_response); return JSONResponse(content=dict_response, status_code=http_code)  
+def respond_file(http_code: int, byte_response: bytes) -> StreamingResponse   : print(f"Response: {http_code} ->", byte_response); return StreamingResponse(io.BytesIO(byte_response), media_type="application/octet-stream", status_code=http_code)
 
 def respond_settings_update(mac_address: str, received_settings_str: str, file_name: str):
     post_data_json      : dict  = json.loads(received_settings_str);
-    update_nio_clock    : bool  = False; 
+    update_soc_clock : bool  = False; 
     if(file_name.startswith("active_")):
-        if(file_name.startswith("active_settings.") and "last_server_time" in post_data_json and post_data_json["last_server_time"] < post_data_json["NIO_BUILD_TIME"]):
-            update_nio_clock = True;
+        if(file_name.startswith("active_settings.") and "last_server_time" in post_data_json and post_data_json["last_server_time"] < post_data_json["TNO_VERSION_TIME"]):
+            update_soc_clock = True;
         file_name = file_name.replace("active_", "");
-    elif(file_name.startswith("spiffs_")):
-        file_name = file_name.replace("spiffs_", "active_");
+    elif(file_name.startswith("fs_")):
+        file_name = file_name.replace("fs_", "active_");
     settings_merged     : dict  = {};
     settings_filename   : str   = file_name + ".json";
     mac_addr_path       : str   = "/".join([pathForDataSource(mac_address), settings_filename]);
@@ -42,9 +42,9 @@ def respond_settings_update(mac_address: str, received_settings_str: str, file_n
             settings_dict       : dict  = json.loads(settings_file.read());
             settings_to_merge   : list  = [k for k in settings_dict if k not in post_json_flat or settings_dict[k] != post_json_flat[k]];
             for k in settings_to_merge:
-                if k not in ["NIO_BUILD_FILENAME", "NIO_BUILD_GIT_COMMIT", "NIO_BUILD_HOUR", "NIO_BUILD_MINUTE", "NIO_BUILD_STRING", "NIO_BUILD_TIME"]:
+                if k not in ["TNO_VERSION_FILENAME", "TNO_VERSION_COMMIT", "TNO_VERSION_HOUR", "TNO_VERSION_MINUTE", "TNO_VERSION_STRING", "TNO_VERSION_TIME"]:
                     settings_merged[k]  = settings_dict[k];
-    if update_nio_clock:
+    if update_soc_clock:
         settings_merged["last_server_time"] = int(time.time());
 
     return respond_json(200, settings_merged);
@@ -59,9 +59,9 @@ def get_firmware_update_bytes(mac_address: str, settings_string: str):
             firmware_files.remove(rollback_from);
         if(len(firmware_files)):
             last_firmware   : str   = firmware_files[-1];
-            has_build_info  : bool  = "NIO_BUILD_FILENAME" in settings_dict;
-            nio_firmware    : str   = settings_dict["NIO_BUILD_FILENAME"] if (has_build_info and -1 == settings_dict["NIO_SETTINGS_SOURCE"].find(".mini.")) else filenameForCodeFromPyTime(0);
-            last_is_newer   : bool  = nio_firmware != sorted([last_firmware, nio_firmware])[1];
+            has_build_info  : bool  = "TNO_VERSION_FILENAME" in settings_dict;
+            soc_firmware    : str   = settings_dict["TNO_VERSION_FILENAME"] if (has_build_info and -1 == settings_dict["TNO_SETTINGS_SOURCE"].find(".mini.")) else filenameForCodeFromPyTime(0);
+            last_is_newer   : bool  = soc_firmware != sorted([last_firmware, soc_firmware])[1];
             if last_is_newer:
                 with open('/'.join([firmware_folder, last_firmware]), "rb") as firmware_file:
                     print("Firmware update available: '%s'" % last_firmware);
@@ -132,8 +132,8 @@ def save_settings_diff(timeless_settings: bytes, received_data: bytes, target_fo
         settings_file.write(json.dumps(json_historic_settings).encode('utf-8'));
 
 def save_received_file(received_data: bytes, target_folder: str, file_name: str, file_extension: str):
-    if   ("settings" == file_name): file_name = "spiffs_" + file_name;
-    elif ("settings_sleep" == file_name): file_name = "spiffs_" + file_name;
+    if   ("settings" == file_name): file_name = "fs_" + file_name;
+    elif ("settings_sleep" == file_name): file_name = "fs_" + file_name;
     timeless_filename   = ".".join([file_name, file_extension]);
     timeless_filepath   = "/".join([target_folder, timeless_filename]);
     if not os.path.exists(target_folder):
