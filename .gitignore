@@ -3,3 +3,4 @@ active_settings.*
 active_state.*
 __pycache__
 *.pyc
+eagle.app.*
